@@ -1,0 +1,145 @@
+1- Check Open source KATANA packages 
+     - https://katanaproject.codeplex.com/
+2- MVC Template
+3- Simplest OWIN Middleware with IIS
+     - New Empty WebApp
+     - install-package microsoft.owin.host.systemweb (to host on IIS) 
+     - check dependencies in package.config
+     - Create Startup class to work with project Katana
+     - In Startup class put this above namespace: 
+        [assembly: OwinStartup(typeof(Namespace.Startup))]
+     - Startup class:
+    public class Startup
+    {
+        // Configuration
+        public void Configuration(IAppBuilder app) {
+
+        // Take owinContext and return Func<Task,Task>
+            app.Use(async (ctx, next) =>
+            {
+                await ctx.Response.WriteAsync("Hello!!");
+
+                await next();
+            });
+        }
+
+    }
+- applay the namespace trick
+- check that it using IISExpress
+4- Simplest using app.Run() and console application
+5- Migrating from Global.asax to Startup class
+6- OWIN Pipeline beside MVC
+
+4- Simplest Self-Hosted Server with OWIN Middleware:
+1- New Console application
+2- install-package microsoft.owin.hosting
+3- install-package microsoft.owin.host.HttpListener
+4- Startup class:
+    public class Startup
+    {
+
+        public void Configuration(IAppBuilder app)
+        {
+            app.Run(ctx =>
+            {
+                // Great but not allow full control
+                return ctx.Response.WriteAsync("Hello");
+            });
+
+            app.Use(async (ctx, next) =>
+           {
+                // return ctx.Response.WriteAsync("Test"); // Without async but will neglect next()
+                await ctx.Response.WriteAsync("Test");
+               await next();
+           });
+
+            
+
+        }
+    }
+5- Main: 
+  Microsoft.Owin.Hosting.WebApp.Start<Startup>("http://localhost:8080");
+            Console.WriteLine("Server Started; Press enter to Quit");
+            Console.ReadLine();
+6- To allow Using Welcome page middleware:
+install-package microsoft.owin.Diagnostics
+7- app.UseWelcomePage();
+
+
+5- Low-level middleware
+1- New Console application
+2- install-package microsoft.owin.hosting
+3- install-package microsoft.owin.host.HttpListener
+4- Create HelloWorldComponent class
+5- below the namespace:
+   using AppFunc = Func<IDictionary<string,object>,Task>;
+6- in component class:
+   AppFunc _next;
+ctor(AppFunc next){
+_next = next;
+} 
+7- in compnent class:
+public Task Invoke(IDictionary<string,object> environement)
+{
+var response = environement["owin.ResponseBody"] as Stream;
+using(var writer = new StreamWriter(response))
+{
+return writer.WriteAsync("Hello");
+}
+
+}
+
+8- default startup class.
+9- default main method of console application.
+10- in Startup class > Configuration:
+app.Use<HelloWorldComponent>();
+11- Extension method:
+public static class AppBuilderExtensions{
+ public static void UseHelloWorldComponent(this IAppBuilder app)
+{
+app.Use<HelloWorldComponent>();
+}
+12- app.UseHelloWorldComponent();
+13- It's short circuite and can be:
+app.Run(ctx => {
+return ctx.Response.WriteAsync("Hi");
+});
+or:
+    app.Use(async (ctx, next) =>
+           {
+              return ctx.Response.WriteAsync("Test"); // Without async but will neglect next()
+               // await ctx.Response.WriteAsync("Test");
+               //await next();
+           });
+
+}
+
+14- to invoke next AppFunc in Invoke:
+        Console.WriteLine("Begin Request");
+        await _next.Invoke(environement);
+        Console.WriteLine("End Request");
+
+6- Middleware as a method
+1- 
+public AppFunc mymiddleware(AppFunc next){
+
+AppFunc appFunc = async(IDictionary<string, object> env) =>{
+var response = environement["owin.ResponseBody"] as Stream;
+using(var writer = new StreamWriter(response))
+{
+await writer.WriteAsync("Hello");
+}
+await next.Invoke(env);
+};
+
+return appFunc;
+}
+
+7- WebAPI:
+install-package Microsoft.AspNet.WebAPI
+var config = new HttpConfiguration();
+config.MapHttpAttributeRoutes();
+app.UseWebApi(config); 
+
+8-MVC:
+install-package Microsoft.Aspnet.mvc     
